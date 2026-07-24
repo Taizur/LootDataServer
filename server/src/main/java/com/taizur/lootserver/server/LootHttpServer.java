@@ -1,6 +1,7 @@
 package com.taizur.lootserver.server;
 import com.sun.net.httpserver.HttpServer;
 import com.taizur.lootserver.handler.HealthHandler;
+import com.taizur.lootserver.handler.UploadHandler;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -12,6 +13,7 @@ public class LootHttpServer {
     public LootHttpServer() throws IOException {
         myServer = HttpServer.create(new InetSocketAddress(PORT), 0);
         myServer.createContext("/health", new HealthHandler());
+        myServer.createContext("/upload", new UploadHandler());
     }
 
     public void start() {
