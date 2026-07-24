@@ -2,6 +2,7 @@ package com.taizur.lootserver.database;
 import com.taizur.shared.model.LootItem;
 
 import java.sql.*;
+import java.util.List;
 import java.util.Map;
 
 public class LootRepository {
@@ -50,29 +51,27 @@ public class LootRepository {
         }
 
 
-        }
-    public void updateClientLootTable(
-            String computerId,
-            Map<Integer, LootItem> lootitems
-    ) throws SQLException {
+    }
+
+    public void updateClientLootTable(String computerId, List<LootItem> lootItems) throws SQLException {
 
         String sql = """
-            INSERT INTO client_loot (
-                computer_id,
-                item_id,
-                item_name,
-                tradeable,
-                total_quantity,
-                ge_price
-            )
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(computer_id, item_id)
-            DO UPDATE SET
-                item_name = excluded.item_name,
-                tradeable = excluded.tradeable,
-                total_quantity = excluded.total_quantity,
-                ge_price = excluded.ge_price;
-            """;
+                INSERT INTO client_loot (
+                    computer_id,
+                    item_id,
+                    item_name,
+                    tradeable,
+                    total_quantity,
+                    ge_price
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(computer_id, item_id)
+                DO UPDATE SET
+                    item_name = excluded.item_name,
+                    tradeable = excluded.tradeable,
+                    total_quantity = excluded.total_quantity,
+                    ge_price = excluded.ge_price;
+                """;
 
         try (Connection connection = connect();
              PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -80,7 +79,7 @@ public class LootRepository {
             connection.setAutoCommit(false);
 
             try {
-                for (LootItem item : lootitems.values()) {
+                for (LootItem item : lootItems) {
                     statement.setString(1, computerId);
                     statement.setInt(2, item.getItemID());
                     statement.setString(3, item.getItemName());
@@ -100,4 +99,44 @@ public class LootRepository {
             }
         }
     }
+
+    //validates that upload is a good file, protects database from accidental wipe.
+    public boolean validateUpload(String computerID, List<LootItem> lootItems) throws SQLException {
+        String sql = """
+                SELECT item_id, total_quantity
+                FROM client_loot
+                WHERE computer_id = ?;
+                """;
+        try (Connection connection = connect(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, computerID);
+
+
+            try (ResultSet results = statement.executeQuery()) {
+                while (results.next()) {
+                    int storedItemID = results.getInt("item_id");
+                    int storedQuantity = results.getInt("total_quantity");
+
+                    boolean matchFound = false;
+
+                    for (LootItem uploadedItem : lootItems) {
+                        if (uploadedItem.getItemID() == storedItemID) {
+                            matchFound = true;
+
+                            if (uploadedItem.getTotalQuantity() < storedQuantity) {
+                                return false;
+                            }
+
+                            break;
+                        }
+                    }
+                    if (!matchFound) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+    }
+
+
 }

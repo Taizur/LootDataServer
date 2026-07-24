@@ -3,6 +3,7 @@ package com.taizur.lootserver.handler;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.taizur.lootserver.csv.UploadParser;
+import com.taizur.lootserver.database.LootRepository;
 import com.taizur.shared.model.LootItem;
 
 import java.io.IOException;
@@ -11,6 +12,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public class UploadHandler implements HttpHandler  {
+    private final LootRepository repo;
+
+    public UploadHandler(LootRepository repo) {
+        this.repo = repo;
+    }
+
     @Override
     public void handle(HttpExchange exchange) throws IOException {
 
@@ -41,13 +48,19 @@ public class UploadHandler implements HttpHandler  {
                 sendResponse(exchange, 400, "Loot data is empty, upload rejected.");
                 return;
             }
-
+            //create parser and parse the data
             UploadParser parser = new UploadParser();
             List<LootItem> lootItems = parser.parseUploadData(lootData);
-            System.out.println(lootItems.size());
-            //call database method
 
-            sendResponse(exchange, 200, "Upload Received.");
+            //validate that list is okay, update if applicable, send appropriate response
+            if (repo.validateUpload(computerID, lootItems)) {
+                repo.updateClientLootTable(computerID, lootItems);
+                sendResponse(exchange, 200, "Upload successful, database updated.");
+            } else {
+                sendResponse(exchange, 400, "Upload rejected, database was not updated.");
+            }
+
+
         } catch (Exception e) {
             e.printStackTrace();
             sendResponse(exchange, 500, "Upload failed.");
