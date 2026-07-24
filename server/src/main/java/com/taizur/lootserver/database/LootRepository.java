@@ -3,7 +3,6 @@ import com.taizur.shared.model.LootItem;
 
 import java.sql.*;
 import java.util.List;
-import java.util.Map;
 
 public class LootRepository {
     private static final String DATABASE_URL = "jdbc:sqlite:C:/LootDataServer/Data/loot.db";
@@ -138,5 +137,47 @@ public class LootRepository {
         }
     }
 
+    //update the master loot table
+    public void updateMasterLootTable() throws SQLException {
 
+        String deleteSql = """
+                DELETE FROM master_loot;
+                """;
+
+        String insertSql = """
+                INSERT INTO master_loot(
+                    item_id,
+                    item_name,
+                    tradeable,
+                    total_quantity,
+                    ge_price
+                )
+                SELECT
+                    item_id,
+                    MAX(item_name),
+                    MAX(tradeable),
+                    SUM(total_quantity),
+                    MAX(ge_price)
+                FROM client_loot
+                GROUP BY item_id;
+                """;
+
+        try (Connection connection = connect();
+                PreparedStatement deleteStatement = connection.prepareStatement(deleteSql);
+                PreparedStatement insertStatement = connection.prepareStatement(insertSql)) {
+
+            connection.setAutoCommit(false);
+
+            try {
+                deleteStatement.executeUpdate();
+                insertStatement.executeUpdate();
+
+                connection.commit();
+            }
+            catch(SQLException e) {
+                connection.rollback();
+                throw e;
+            }
+        }
+    }
 }

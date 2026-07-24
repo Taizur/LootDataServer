@@ -55,6 +55,7 @@ public class UploadHandler implements HttpHandler  {
             //validate that list is okay, update if applicable, send appropriate response
             if (repo.validateUpload(computerID, lootItems)) {
                 repo.updateClientLootTable(computerID, lootItems);
+                repo.updateMasterLootTable();
                 sendResponse(exchange, 200, "Upload successful, database updated.");
             } else {
                 sendResponse(exchange, 400, "Upload rejected, database was not updated.");
